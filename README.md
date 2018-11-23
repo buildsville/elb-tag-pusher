@@ -8,6 +8,24 @@ can see command line flags
 ./elb-tag-pusher -h
 ```
 
+## aws role
+
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "elasticloadbalancing:DescribeLoadBalancers",
+                "elasticloadbalancing:DescribeTags"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
 ## caution
 
 If the key of the tag contains a symbol, it will be replaced with an underscore  
