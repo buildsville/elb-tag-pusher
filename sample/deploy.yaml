@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elb-tag-pusher
+  namespace: prom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elb-tag-pusher
+  template:
+    metadata:
+      labels:
+        app: elb-tag-pusher
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9091'
+      containers:
+        - image: masahata/elb-tag-pusher:latest
+          name: elb-tag-pusher
+        - image: prom/pushgateway:v0.6.0
+          name: pushgateway
+          ports:
+            - containerPort: 9091
