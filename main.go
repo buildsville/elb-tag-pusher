@@ -18,7 +18,8 @@ const (
   defaultPushGateWayAddr = "http://localhost:9091"
   defaultJobName = "push_elb_tag"
   defaultMetricsName = "aws_elb_tags"
-  defalutELBNameLabelKey = "elb_name"
+  defalutELBNameLabelKey = "load_balancer_name"
+	defaultReplaceChar = "/"
 )
 
 var pushAddr = flag.String("pushGateWayAddr", defaultPushGateWayAddr, "push metrics gateway address.")
@@ -26,6 +27,7 @@ var interval = flag.Int("pushInterval", defaultPushIntervalSec, "Interval to pus
 var jobName = flag.String("jobName", defaultJobName, "job name of metrics.")
 var metricsName = flag.String("metricsName", defaultMetricsName, "metrics name of elb tag info.")
 var elbNameLabelKey = flag.String("elbNameLabelKey", defalutELBNameLabelKey, "the key of elb name label.")
+var replace = flag.String("replaceChar",defaultReplaceChar, "a character to replace unusable characters in labels.")
 
 var elbSession = func() *elb.ELB {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -76,7 +78,7 @@ func main() {
       push := push.New(*pushAddr,*jobName).Collector(awsElbTags)
       push.Grouping(*elbNameLabelKey,*tagDesc.LoadBalancerName)
       for _, t := range tagDesc.Tags {
-        push.Grouping(keyReg.ReplaceAllString(*t.Key, "_"),valReg.ReplaceAllString(*t.Value,"_"))
+        push.Grouping(keyReg.ReplaceAllString(*t.Key, *replace),valReg.ReplaceAllString(*t.Value,*replace))
       }
       if err := push.Push(); err != nil {
         log.Errorf("Could not push completion time to Pushgateway:", err)
