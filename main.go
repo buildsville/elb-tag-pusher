@@ -19,7 +19,7 @@ const (
 	defaultJobName         = "push_elb_tag"
 	defaultMetricsName     = "aws_elb_tags"
 	defalutELBNameLabelKey = "load_balancer_name"
-	defaultReplaceChar     = "/"
+	defaultReplaceChar     = "_"
 )
 
 var pushAddr = flag.String("pushGateWayAddr", defaultPushGateWayAddr, "push metrics gateway address.")
@@ -37,19 +37,15 @@ var elbSession = func() *elb.ELB {
 }()
 
 func getTagDescriptions() ([]*elb.TagDescription, error) {
-	var elbNames []*string
+	var tags []*elb.TagDescription
 	input := &elb.DescribeLoadBalancersInput{}
 	ret, err := elbSession.DescribeLoadBalancers(input)
 	if err != nil {
 		return nil, err
 	}
 	for _, lb := range ret.LoadBalancerDescriptions {
-		elbNames = append(elbNames, lb.LoadBalancerName)
-	}
-	var tags []*elb.TagDescription
-	for _, elbn := range elbNames {
 		taginput := &elb.DescribeTagsInput{
-			LoadBalancerNames: []*string{elbn},
+			LoadBalancerNames: []*string{lb.LoadBalancerName},
 		}
 		tag, err := elbSession.DescribeTags(taginput)
 		if err != nil {
