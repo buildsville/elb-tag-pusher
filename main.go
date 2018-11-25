@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -51,30 +52,56 @@ func getTagDescriptions() ([]*elb.TagDescription, error) {
 		if err != nil {
 			return nil, err
 		}
-		tags = append(tags, tag.TagDescriptions...)
+		for _, td := range tag.TagDescriptions {
+			if isKubernetesService(td) {
+				tags = append(tags, td)
+			}
+		}
 	}
 	return tags, nil
+}
+
+func isKubernetesService(td *elb.TagDescription) bool {
+	searchKey := "kubernetes.io/service-name"
+	for _, t := range td.Tags {
+		if *t.Key == searchKey {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
 	flag.Parse()
 	keyReg := regexp.MustCompile(`[ -/:-@{-~]`)
 	valReg := regexp.MustCompile(`/`)
+	serviceKeyWord := "kubernetes.io/service-name"
+	clusterKeyPrefix := "kubernetes.io/cluster/"
 	for {
 		tagDescs, err := getTagDescriptions()
 		if err != nil {
 			log.Errorln(err)
 		}
-		awsElbTags := prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: *metricsName,
-			Help: "tag key and value on aws elastic load balancer.",
-		})
-		awsElbTags.Set(float64(1))
 		for _, tagDesc := range tagDescs {
-			push := push.New(*pushAddr, *jobName).Collector(awsElbTags)
-			push.Grouping(*elbNameLabelKey, *tagDesc.LoadBalancerName)
+			label := map[string]string{}
+			groupingKey := map[string]string{}
+			label[*elbNameLabelKey] = *tagDesc.LoadBalancerName
 			for _, t := range tagDesc.Tags {
-				push.Grouping(keyReg.ReplaceAllString(*t.Key, *replace), valReg.ReplaceAllString(*t.Value, *replace))
+				if *t.Key == serviceKeyWord || strings.HasPrefix(*t.Key, clusterKeyPrefix) {
+					groupingKey[keyReg.ReplaceAllString(*t.Key, *replace)] = valReg.ReplaceAllString(*t.Value, *replace)
+				} else {
+					label[keyReg.ReplaceAllString(*t.Key, *replace)] = valReg.ReplaceAllString(*t.Value, *replace)
+				}
+			}
+			awsElbTags := prometheus.NewGauge(prometheus.GaugeOpts{
+				Name:        *metricsName,
+				Help:        "tag key and value on aws elastic load balancer.",
+				ConstLabels: label,
+			})
+			awsElbTags.Set(float64(1))
+			push := push.New(*pushAddr, *jobName).Collector(awsElbTags)
+			for k, v := range groupingKey {
+				push.Grouping(k, v)
 			}
 			if err := push.Push(); err != nil {
 				log.Errorf("Could not push completion time to Pushgateway:", err)
