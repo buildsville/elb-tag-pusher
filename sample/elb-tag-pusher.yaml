@@ -15,9 +15,17 @@ spec:
       annotations:
         prometheus.io/scrape: 'true'
         prometheus.io/port: '9091'
+    spec:
       containers:
         - image: masahata/elb-tag-pusher:latest
           name: elb-tag-pusher
+          env:
+            - name: AWS_REGION
+              value: xxxxxx # set your region
+            - name: AWS_ACCESS_KEY_ID
+              value: xxxxxxxxx # set your aws id
+            - name: AWS_SECRET_ACCESS_KEY
+              value: xxxxxxxxx # set your aws secret
         - image: prom/pushgateway:v0.6.0
           name: pushgateway
           ports:

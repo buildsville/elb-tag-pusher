@@ -93,17 +93,17 @@ func main() {
 					label[keyReg.ReplaceAllString(*t.Key, *replace)] = valReg.ReplaceAllString(*t.Value, *replace)
 				}
 			}
-			awsElbTags := prometheus.NewGauge(prometheus.GaugeOpts{
+			tagsGauge := prometheus.NewGauge(prometheus.GaugeOpts{
 				Name:        *metricsName,
 				Help:        "tag key and value on aws elastic load balancer.",
 				ConstLabels: label,
 			})
-			awsElbTags.Set(float64(1))
-			push := push.New(*pushAddr, *jobName).Collector(awsElbTags)
+			tagsGauge.Set(float64(1))
+			pusher := push.New(*pushAddr, *jobName).Collector(tagsGauge)
 			for k, v := range groupingKey {
-				push.Grouping(k, v)
+				pusher.Grouping(k, v)
 			}
-			if err := push.Push(); err != nil {
+			if err := pusher.Push(); err != nil {
 				log.Errorf("Could not push completion time to Pushgateway:", err)
 			}
 		}

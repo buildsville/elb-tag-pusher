@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-svc
+  namespace: default
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: 'service=prometheus-svc'
+spec:
+  selector:
+    app: prometheus
+  type: LoadBalancer
+  ports:
+    - name: prometheus
+      port: 9090
+      targetPort: 9090

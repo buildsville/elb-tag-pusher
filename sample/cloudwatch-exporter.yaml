@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudwatch-exporter
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudwatch-exporter
+  template:
+    metadata:
+      labels:
+        app: cloudwatch-exporter
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9106'
+    spec:
+      containers:
+        - name: prom-cloudwatch
+          image: prom/cloudwatch-exporter:cloudwatch_exporter-0.5.0
+          args: [ "/etc/prometheus/config.yml" ]
+          env:
+            - name: AWS_REGION
+              value: xxxxxx # set your region
+            - name: AWS_ACCESS_KEY_ID
+              value: xxxxxxxxx # set your aws id
+            - name: AWS_SECRET_ACCESS_KEY
+              value: xxxxxxxxx # set your aws secret
+          ports:
+            - containerPort: 9106
+          volumeMounts:
+            - name: cw-config-volume
+              mountPath: /etc/prometheus
+      volumes:
+        - name: cw-config-volume
+          configMap:
+            name: cloudwatch-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudwatch-config
+  namespace: default
+data:
+  config.yml: |
+    region: ap-northeast-1
+    delay_seconds: 60
+    range_seconds: 60
+    metrics:
+      - aws_namespace: AWS/ELB
+        aws_metric_name: RequestCount
+        aws_dimensions: [LoadBalancerName]
+        aws_dimension_select_regex:
+          LoadBalancerName: ["[0-9a-f]{32}"]
+        aws_statistics: [Sum]
+      - aws_namespace: AWS/ELB
+        aws_metric_name: Latency
+        aws_dimensions: [LoadBalancerName]
+        aws_dimension_select_regex:
+          LoadBalancerName: ["[0-9a-f]{32}"]
+        aws_statistics: [Average]
